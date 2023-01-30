@@ -214,6 +214,34 @@ RCT_EXPORT_METHOD(exportAsImage:(int)pageNumber dpi:(int)dpi exportFormat:(NSStr
     }
 }
 
+RCT_EXPORT_METHOD(getFieldList:(RCTPromiseResolveBlock)resolve
+                 rejecter:(RCTPromiseRejectBlock)reject)
+{
+    @try {
+        NSString *fileName = @"/creation-request.json";
+        NSURL *documentsFolderURL = [[[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask] lastObject];
+        NSString *filePath = [documentsFolderURL.path stringByAppendingString:fileName];
+        NSError* error;
+
+        NSString* inputJSON = [NSString stringWithContentsOfFile:filePath encoding:NSUTF8StringEncoding error:&error];
+        
+        // Gather the input data
+        NSString* pdfTronLicenseKey = @"Remote Sales Force, LLC (remotesf.com):OEM:One Click Contractor::IA:AMS(20230427):C0771F301F3794D02333FD7860612FA55C60F5A2BD22EE94347028BE4AB231F5C7";
+        NSString* clientAgent = @"iOS"; // TODO: Get the actual device model
+        NSString* ip = @"127.0.0.1"; // TODO: Can we get a public IP (when online)
+        NSString* timestamp = @"2023-01-01T01:23:45Z";
+               
+        // Call into the Go code
+        NSString* fieldsJSON = ScribbleCreateSigningRequest(pdfTronLicenseKey, inputJSON, clientAgent, ip, timestamp);
+                
+              
+        resolve(fieldsJSON);
+    }
+    @catch (NSException *exception) {
+        reject(@"get_failed", @"Failed to get PDFNet version", [self errorFromException:exception]);
+    }
+}
+
 RCT_EXPORT_METHOD(getPlistValue:(RCTPromiseResolveBlock)resolve
                  rejecter:(RCTPromiseRejectBlock)reject)
 {
