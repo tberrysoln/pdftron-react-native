@@ -7,13 +7,18 @@ import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
 import com.pdftron.pdf.Convert;
+import com.pdftron.pdf.Font;
 import com.pdftron.pdf.OfficeToPDFOptions;
 import com.pdftron.pdf.PDFDoc;
 import com.pdftron.pdf.PDFNet;
+import com.pdftron.pdf.PageSet;
+import com.pdftron.pdf.Stamper;
 import com.pdftron.pdf.model.StandardStampOption;
 import com.pdftron.pdf.utils.AppUtils;
+import com.pdftron.pdf.utils.HTML2PDF;
 import com.pdftron.pdf.utils.PdfViewCtrlSettingsManager;
 import com.pdftron.pdf.utils.PdfViewCtrlTabsManager;
 import com.pdftron.pdf.utils.RecentFilesManager;
@@ -78,6 +83,99 @@ public class RNPdftronModule extends ReactContextBaseJavaModule {
                 }
             }
         });
+    }
+
+       @ReactMethod
+    public void mergeDocuments(ReadableArray documentsArray, final Promise promise) {
+        try {
+            PDFDoc newDoc = new PDFDoc();
+            newDoc.initSecurityHandler();
+
+            for (int i = 0; i < documentsArray.size(); i++) {
+                String filePath = documentsArray.getString(i);
+                try (PDFDoc inDoc = new PDFDoc(filePath)) {
+                    inDoc.initSecurityHandler();
+                    newDoc.insertPages(newDoc.getPageCount() + 1, inDoc, 1, inDoc.getPageCount(), PDFDoc.InsertBookmarkMode.NONE, null);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    continue;
+                }
+            }
+
+            File resultFile = File.createTempFile("merged_", ".pdf", getReactApplicationContext().getCacheDir());
+            String resultDocPath = resultFile.getAbsolutePath();
+            newDoc.save(resultDocPath, SDFDoc.SaveMode.REMOVE_UNUSED, null);
+            newDoc.close();
+
+            promise.resolve(resultDocPath);
+        } catch (Exception e) {
+            promise.reject("merging_failed", "Failed to merge documents", e);
+        }
+    }
+
+    @ReactMethod
+    public  void convertHtmlToPdf (final String htmlString, final String baseUrl, final Promise promise) {
+        getReactApplicationContext().runOnUiQueueThread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    HTML2PDF.fromHTMLDocument(getReactApplicationContext(), baseUrl, htmlString, new HTML2PDF.HTML2PDFListener() {
+                        @Override
+                        public void onConversionFinished(String pdfOutput, boolean isLocal) {
+                            // Resolve the promise with the path to the generated PDF
+                            promise.resolve(pdfOutput);
+                        }
+
+                        @Override
+                        public void onConversionFailed(String error) {
+                            // Reject the promise if conversion failed
+                            promise.reject("conversion_failed", error);
+                        }
+                    });
+                } catch (Exception ex) {
+                    // Reject the promise if there is an exception
+                    promise.reject("conversion_error", ex);
+                }
+            }
+        });
+    }
+
+    @ReactMethod
+    public void createStamper(String filePath, String stampText, final Promise promise) {
+        try {
+            PDFDoc doc = new PDFDoc(filePath);
+            doc.initSecurityHandler();
+
+            Stamper stamper = new Stamper(Stamper.e_relative_scale, 0.05, 0.05);
+
+            stamper.setAlignment(Stamper.e_horizontal_center, Stamper.e_vertical_bottom);
+
+            stamper.setPosition(0, 5);
+
+            stamper.setSize(Stamper.e_font_size, 9, -1);
+
+
+            Font font = Font.create(doc.getSDFDoc(), Font.e_helvetica, true);
+            stamper.setFont(font);
+
+
+            stamper.setTextAlignment(Stamper.e_align_center);
+
+            int pageCount = doc.getPageCount();
+            for (int page = 1; page <= pageCount; page++) {
+                String pageText = stampText + " Page " + page + " of " + pageCount;
+                PageSet pageSet = new PageSet(page);
+                stamper.stampText(doc, pageText, pageSet);
+            }
+            doc.save(filePath, SDFDoc.SaveMode.REMOVE_UNUSED, null);
+            doc.close();
+
+            promise.resolve(filePath);
+
+
+        } catch (Exception ex) {
+            promise.reject("generation_failed", "Failed to generate stamp", ex);
+        }
     }
 
     @ReactMethod
