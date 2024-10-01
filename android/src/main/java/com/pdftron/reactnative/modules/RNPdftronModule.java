@@ -120,7 +120,6 @@ public class RNPdftronModule extends ReactContextBaseJavaModule {
                         @Override
                         public void onConversionFinished(String pdfOutput, boolean isLocal) {
                             // Resolve the promise with the path to the generated PDF
-                            Log.d("COnversion", "pdf file" + pdfOutput);
                             promise.resolve(pdfOutput);
                         }
 
