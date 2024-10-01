@@ -15,6 +15,7 @@ import com.pdftron.pdf.PDFDoc;
 import com.pdftron.pdf.PDFNet;
 import com.pdftron.pdf.model.StandardStampOption;
 import com.pdftron.pdf.utils.AppUtils;
+import com.pdftron.pdf.utils.HTML2PDF;
 import com.pdftron.pdf.utils.PdfViewCtrlSettingsManager;
 import com.pdftron.pdf.utils.PdfViewCtrlTabsManager;
 import com.pdftron.pdf.utils.RecentFilesManager;
@@ -107,6 +108,34 @@ public class RNPdftronModule extends ReactContextBaseJavaModule {
         } catch (Exception e) {
             promise.reject("merging_failed", "Failed to merge documents", e);
         }
+    }
+
+    @ReactMethod
+    public  void convertHtmlToPdf (final String htmlString, final String baseUrl, final Promise promise) {
+        getReactApplicationContext().runOnUiQueueThread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    HTML2PDF.fromHTMLDocument(getReactApplicationContext(), baseUrl, htmlString, new HTML2PDF.HTML2PDFListener() {
+                        @Override
+                        public void onConversionFinished(String pdfOutput, boolean isLocal) {
+                            // Resolve the promise with the path to the generated PDF
+                            Log.d("COnversion", "pdf file" + pdfOutput);
+                            promise.resolve(pdfOutput);
+                        }
+
+                        @Override
+                        public void onConversionFailed(String error) {
+                            // Reject the promise if conversion failed
+                            promise.reject("conversion_failed", error);
+                        }
+                    });
+                } catch (Exception ex) {
+                    // Reject the promise if there is an exception
+                    promise.reject("conversion_error", ex);
+                }
+            }
+        });
     }
 
     @ReactMethod
