@@ -10,9 +10,12 @@ import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
 import com.pdftron.pdf.Convert;
+import com.pdftron.pdf.Font;
 import com.pdftron.pdf.OfficeToPDFOptions;
 import com.pdftron.pdf.PDFDoc;
 import com.pdftron.pdf.PDFNet;
+import com.pdftron.pdf.PageSet;
+import com.pdftron.pdf.Stamper;
 import com.pdftron.pdf.model.StandardStampOption;
 import com.pdftron.pdf.utils.AppUtils;
 import com.pdftron.pdf.utils.HTML2PDF;
@@ -135,6 +138,44 @@ public class RNPdftronModule extends ReactContextBaseJavaModule {
                 }
             }
         });
+    }
+
+    @ReactMethod
+    public void createStamper(String filePath, String stampText, final Promise promise) {
+        try {
+            PDFDoc doc = new PDFDoc(filePath);
+            doc.initSecurityHandler();
+
+            Stamper stamper = new Stamper(Stamper.e_relative_scale, 0.05, 0.05);
+
+            stamper.setAlignment(Stamper.e_horizontal_center, Stamper.e_vertical_bottom);
+
+            stamper.setPosition(0, 5);
+
+            stamper.setSize(Stamper.e_font_size, 9, -1);
+
+
+            Font font = Font.create(doc.getSDFDoc(), Font.e_helvetica, true);
+            stamper.setFont(font);
+
+
+            stamper.setTextAlignment(Stamper.e_align_center);
+
+            int pageCount = doc.getPageCount();
+            for (int page = 1; page <= pageCount; page++) {
+                String pageText = stampText + " Page " + page + " of " + pageCount;
+                PageSet pageSet = new PageSet(page);
+                stamper.stampText(doc, pageText, pageSet);
+            }
+            doc.save(filePath, SDFDoc.SaveMode.REMOVE_UNUSED, null);
+            doc.close();
+
+            promise.resolve(filePath);
+
+
+        } catch (Exception ex) {
+            promise.reject("generation_failed", "Failed to generate stamp", ex);
+        }
     }
 
     @ReactMethod
