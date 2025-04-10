@@ -32,13 +32,13 @@ APIs are available on the [API page](API.md).
 
 Version `2.0.2` is the last stable release for the legacy UI.
 
-The release can be found here: https://github.com/PDFTron/pdftron-react-native/releases/tag/legacy-ui.
+The release can be found here: https://github.com/ApryseSDK/pdftron-react-native/releases/tag/legacy-ui.
 
 ## Pre-Java 17
 
 Version `3.0.3-38` is the last stable release for pre-Java 17.
 
-The release can be found here: https://github.com/PDFTron/pdftron-react-native/releases/tag/pre-java17.
+The release can be found here: https://github.com/ApryseSDK/pdftron-react-native/releases/tag/pre-java17.
 
 ## Installation
 
@@ -51,14 +51,14 @@ The release can be found here: https://github.com/PDFTron/pdftron-react-native/r
      In `MyApp` folder, install `react-native-pdftron` by calling:
 
      ```shell
-     yarn add github:PDFTron/pdftron-react-native
+     yarn add github:ApryseSDK/pdftron-react-native
      yarn install
      ```
 
      or
 
      ```shell
-     npm install github:PDFTron/pdftron-react-native --save
+     npm install github:ApryseSDK/pdftron-react-native --save
      npm install
      ```
 
@@ -166,18 +166,20 @@ The release can be found here: https://github.com/PDFTron/pdftron-react-native/r
 6. Finally in the root project directory, run `react-native run-android`.
 
 ### iOS
-#### Note — January 2022
-**There is a new podspec file to use when integrating the PDFTron React Native Wrapper for iOS:**
-**https://pdftron.com/downloads/ios/react-native/latest.podspec**
 
-**Please update your `Podfile` accordingly.**
+> [!IMPORTANT]
+> As of March 2025, use of the podspec distributed specifically for the PDFTron React Native wrapper (`https://pdftron.com/downloads/ios/react-native/latest.podspec`) is deprecated.
+> 
+> **All new and existing users are recommended to use the standard [Apryse iOS SDK CocoaPods](https://docs.apryse.com/ios/guides/get-started/integration?tab=cocoapods) instead.**
+>
+> Please update your `Podfile` accordingly.
 
 1. Open `Podfile` in the `ios` folder, add the following line to the `target 'MyApp' do ... end` block:
 
     ```
     target 'MyApp' do
         # ...
-        pod 'PDFNet', podspec: 'https://pdftron.com/downloads/ios/react-native/latest.podspec'
+        pod 'PDFNet', podspec: 'https://www.pdftron.com/downloads/ios/cocoapods/xcframeworks/pdfnet/latest.podspec'
         # ...
     end
     ```
