@@ -85,7 +85,7 @@ public class RNPdftronModule extends ReactContextBaseJavaModule {
         });
     }
 
-       @ReactMethod
+    @ReactMethod
     public void mergeDocuments(ReadableArray documentsArray, final Promise promise) {
         try {
             PDFDoc newDoc = new PDFDoc();
@@ -114,27 +114,104 @@ public class RNPdftronModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public  void convertHtmlToPdf (final String htmlString, final String baseUrl, final Promise promise) {
+    public void convertHtmlToPdf(final String htmlString, final String baseUrl, final Promise promise) {
         getReactApplicationContext().runOnUiQueueThread(new Runnable() {
             @Override
             public void run() {
+                final int maxRetries = 2;
+                final int[] retryCount = {0};
+                
+                // Start the first attempt
+                attemptConversion(htmlString, baseUrl, promise, maxRetries, retryCount);
+            }
+            
+            private void attemptConversion(final String htmlString, final String baseUrl, 
+                                          final Promise promise, final int maxRetries, final int[] retryCount) {
+                // Create a flag to track if any callback was called
+                final boolean[] callbackCalled = {false};
+                
+                // Set a timeout to retry if neither callback is called
+                final android.os.Handler timeoutHandler = new android.os.Handler();
+                final Runnable timeoutRunnable = new Runnable() {
+                    @Override
+                    public void run() {
+                        if (!callbackCalled[0]) {
+                            // No callback was called, so we'll retry
+                            if (retryCount[0] < maxRetries) {
+                                retryCount[0]++;
+                                // Add a small delay before retrying (500ms)
+                                new android.os.Handler().postDelayed(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        attemptConversion(htmlString, baseUrl, promise, maxRetries, retryCount);
+                                    }
+                                }, 500);
+                            } else {
+                                // Reject the promise if all retries failed
+                                promise.reject("conversion_timeout", "Conversion timed out after " + maxRetries + " attempts");
+                            }
+                        }
+                    }
+                };
+                
+                // Set a 20-second timeout
+                timeoutHandler.postDelayed(timeoutRunnable, 20000);
+                
                 try {
                     HTML2PDF.fromHTMLDocument(getReactApplicationContext(), baseUrl, htmlString, new HTML2PDF.HTML2PDFListener() {
                         @Override
                         public void onConversionFinished(String pdfOutput, boolean isLocal) {
+                            // Mark that a callback was called
+                            callbackCalled[0] = true;
+                            // Cancel the timeout
+                            timeoutHandler.removeCallbacks(timeoutRunnable);
                             // Resolve the promise with the path to the generated PDF
                             promise.resolve(pdfOutput);
                         }
 
                         @Override
                         public void onConversionFailed(String error) {
-                            // Reject the promise if conversion failed
-                            promise.reject("conversion_failed", error);
+                            // Mark that a callback was called
+                            callbackCalled[0] = true;
+                            // Cancel the timeout
+                            timeoutHandler.removeCallbacks(timeoutRunnable);
+                            
+                            // Check if we should retry
+                            if (retryCount[0] < maxRetries) {
+                                retryCount[0]++;
+                                // Add a small delay before retrying (500ms)
+                                new android.os.Handler().postDelayed(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        attemptConversion(htmlString, baseUrl, promise, maxRetries, retryCount);
+                                    }
+                                }, 500);
+                            } else {
+                                // Reject the promise if all retries failed
+                                promise.reject("conversion_failed", "Failed after " + maxRetries + " attempts: " + error);
+                            }
                         }
                     });
                 } catch (Exception ex) {
-                    // Reject the promise if there is an exception
-                    promise.reject("conversion_error", ex);
+                    // Mark that a callback was called (via exception)
+                    callbackCalled[0] = true;
+                    // Cancel the timeout
+                    timeoutHandler.removeCallbacks(timeoutRunnable);
+                    
+                    // Check if we should retry
+                    if (retryCount[0] < maxRetries) {
+                        retryCount[0]++;
+                        // Add a small delay before retrying (500ms)
+                        new android.os.Handler().postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                attemptConversion(htmlString, baseUrl, promise, maxRetries, retryCount);
+                            }
+                        }, 500);
+                    } else {
+                        // Reject the promise if all retries failed
+                        promise.reject("conversion_error", "Failed after " + maxRetries + " attempts: " + ex.getMessage());
+                    }
                 }
             }
         });
